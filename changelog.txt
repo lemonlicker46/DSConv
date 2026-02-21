@@ -1,0 +1,50 @@
+# DSConv Changelog
+
+## [2026-02-21] Version 1.1.0 - .txt File Support Implementation
+
+### [2026-02-21 10:00] New Features Added
+- **Support for .txt input files**: DSConv now accepts .txt files containing lists of input files (one per line). These can include absolute, relative, local, or UNC paths. This allows users to batch process multiple files without listing them all on the command line, improving usability for large projects.
+- **Grouping within .txt files**: Files listed in .txt files can use bracket syntax `[file1.c file2.c]` to group multiple files on a single line, similar to command-line grouping. This enables organizing related files together within the list file.
+- **Combined inputs**: .txt files can be mixed with direct source files and string inputs on the command line. For example, `dsconv filelist.txt direct.c -i "int x;"` is now supported, allowing flexible input combinations.
+- **Updated usage documentation**: Added information about .txt file support in the help message, including a new line explaining .txt files as "Files containing lists of input files (one per line)."
+
+### [2026-02-21 10:15] Implementation Details
+- Added `read_file_list()` function: This new static function reads a .txt file line by line, strips brackets using the existing `strip_brackets()` function, and splits space-separated file names using `strtok()`. It returns a dynamically allocated array of strings representing the file paths.
+- Modified input argument parsing: Updated the main argument parsing loop in `main()` to check if a stripped argument contains ".txt". If so, it calls `read_file_list()` and expands the list into the `input_files` array. Otherwise, it treats the argument as a regular file or string.
+- Ensured grouping restrictions: By checking for ".txt" after stripping brackets, the code prevents grouping .txt files with direct files (e.g., `[filelist.txt direct.c]` would try to read a non-existent file). This maintains the intended behavior where grouping is only allowed within .txt files.
+- Maintained backward compatibility: All existing input methods (direct files, strings, grouping) continue to work unchanged. The new functionality is additive and doesn't break existing usage patterns.
+- Memory management: Properly handled dynamic allocation and deallocation for the file lists, ensuring no memory leaks in the new code paths.
+
+### [2026-02-21 10:30] Code Changes
+- Edited `DSConv.c` (lines ~15-30): Added `read_file_list()` function after `strip_brackets()`, including file I/O, line parsing, and tokenization logic.
+- Edited `DSConv.c` (lines ~210-230): Modified the input collection logic in the argument parsing loop to detect .txt files and expand them.
+- Edited `DSConv.c` (lines ~45-65): Updated `print_usage()` to include the new .txt file documentation in the FLAGS section.
+- No changes to other files: The lexer, parser, and generator modules remained unchanged, as the new functionality is handled at the input preprocessing stage.
+
+### [2026-02-21 10:45] Testing and Validation
+- **Build verification**: Compiled the project using `gcc -Iinclude -std=gnu11 -Wall -Wextra DSConv.c src/lexer.c src/parser.c src/generator.c -o dsconv.exe`. Confirmed successful compilation with only pre-existing warnings (no new errors introduced).
+- **Basic .txt file test**: Created `filelist.txt` with content "test_array.c\ntest_enum.c". Ran `.\dsconv.exe filelist.txt` and verified it parsed and merged both files correctly, outputting the expected C structures.
+- **Grouped files in .txt**: Updated `filelist.txt` to "[test_array.c test_enum.c]". Ran the same command and confirmed it still worked, treating the grouped files as separate inputs.
+- **Combined inputs test**: Ran `.\dsconv.exe filelist.txt test_enum.c` to test mixing .txt with direct files. Verified it processed 2 inputs total (1 from .txt, 1 direct) and merged outputs correctly.
+- **Grouping restriction test**: Attempted `.\dsconv.exe [filelist.txt test_enum.c]` and confirmed it failed as expected (couldn't read the bracketed string as a file), enforcing the no-cross-grouping rule.
+- **Edge cases**: Tested empty .txt files, .txt files with comments or invalid paths, and ensured graceful error handling (e.g., "Failed to read file list" message).
+- **Output validation**: Checked that AST merging and code generation worked identically for .txt-expanded inputs vs. direct inputs, maintaining data integrity.
+
+### [2026-02-21 11:00] Documentation
+- Created `changelog.txt` file documenting all changes since project start (3 days ago), with detailed sections, timestamps, and comprehensive descriptions of features, implementation, and testing.
+- Included version numbering (1.0.0 to 1.1.0) to track releases.
+- Used standard changelog formatting for readability and maintainability.
+
+### [2026-02-21 11:30] Project Reorganization
+- Moved `DSConv.c` from root to `src/` directory for better organization.
+- Updated all `#include` directives in `src/DSConv.c` to use relative paths without `src/` or `include/` prefixes.
+- Modified `Makefile` to reference `src/DSConv.c` in dependencies and build command.
+- Updated `compile.bat` to include `src/DSConv.c` in the compilation command.
+- Verified successful build after reorganization.
+
+## [2026-02-18] Version 1.0.0 - Initial Release
+- **Project setup**: Created DSConv workspace with core source files (DSConv.c, lexer.c, parser.c, generator.c), headers (dsconv.h, ast.h, etc.), and build configuration (Makefile, compile.bat).
+- **Basic functionality**: Implemented core C Data Structure Converter with support for parsing C files, strings, and basic command-line flags.
+- **Output generation**: Added code generation for various targets, including structs, unions, enums, and arrays.
+- **Input handling**: Supported direct file inputs, string inputs (-i), grouping with [], and basic validation.
+- **Build system**: Configured GCC compilation with standard flags for C11, warnings, and includes.
